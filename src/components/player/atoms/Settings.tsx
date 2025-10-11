@@ -13,20 +13,30 @@ import { VideoPlayerButton } from "@/components/player/internals/Button";
 import { Menu } from "@/components/player/internals/ContextMenu";
 import { useOverlayRouter } from "@/hooks/useOverlayRouter";
 import { usePlayerStore } from "@/stores/player/store";
+import { usePreferencesStore } from "@/stores/preferences";
 
 import { AudioView } from "./settings/AudioView";
 import { CaptionSettingsView } from "./settings/CaptionSettingsView";
 import { CaptionsView } from "./settings/CaptionsView";
+import { DebridSetupView } from "./settings/DebridSetupView";
 import { DownloadRoutes } from "./settings/Downloads";
+import { FedApiSetupView } from "./settings/FedApiSetupView";
+import { LanguageView } from "./settings/LanguageView";
 import { PlaybackSettingsView } from "./settings/PlaybackSettingsView";
 import { QualityView } from "./settings/QualityView";
 import { SettingsMenu } from "./settings/SettingsMenu";
+import { ThemeView } from "./settings/ThemeView";
 import { TranscriptView } from "./settings/TranscriptView";
 import { WatchPartyView } from "./settings/WatchPartyView";
 
 function SettingsOverlay({ id }: { id: string }) {
   const [chosenSourceId, setChosenSourceId] = useState<string | null>(null);
   const router = useOverlayRouter(id);
+
+  const debridToken = usePreferencesStore((s) => s.debridToken);
+  const setdebridToken = usePreferencesStore((s) => s.setdebridToken);
+  const debridService = usePreferencesStore((s) => s.debridService);
+  const setdebridService = usePreferencesStore((s) => s.setdebridService);
 
   // reset source id when going to home or closing overlay
   useEffect(() => {
@@ -54,7 +64,7 @@ function SettingsOverlay({ id }: { id: string }) {
             <AudioView id={id} />
           </Menu.Card>
         </OverlayPage>
-        <OverlayPage id={id} path="/captions" width={343} height={452}>
+        <OverlayPage id={id} path="/captions" width={343} height={320}>
           <Menu.CardWithScrollable>
             <CaptionsView id={id} backLink />
           </Menu.CardWithScrollable>
@@ -91,7 +101,33 @@ function SettingsOverlay({ id }: { id: string }) {
             <EmbedSelectionView id={id} sourceId={chosenSourceId} />
           </Menu.CardWithScrollable>
         </OverlayPage>
-        <OverlayPage id={id} path="/playback" width={343} height={330}>
+        <OverlayPage
+          id={id}
+          path="/source/fed-api-setup"
+          width={343}
+          height={431}
+        >
+          <Menu.CardWithScrollable>
+            <FedApiSetupView id={id} />
+          </Menu.CardWithScrollable>
+        </OverlayPage>
+        <OverlayPage
+          id={id}
+          path="/source/debrid-setup"
+          width={343}
+          height={431}
+        >
+          <Menu.CardWithScrollable>
+            <DebridSetupView
+              id={id}
+              debridToken={debridToken}
+              setdebridToken={setdebridToken}
+              debridService={debridService}
+              setdebridService={setdebridService}
+            />
+          </Menu.CardWithScrollable>
+        </OverlayPage>
+        <OverlayPage id={id} path="/playback" width={343} height={215}>
           <Menu.Card>
             <PlaybackSettingsView id={id} />
           </Menu.Card>
@@ -105,6 +141,16 @@ function SettingsOverlay({ id }: { id: string }) {
           <Menu.CardWithScrollable>
             <TranscriptView id={id} />
           </Menu.CardWithScrollable>
+        </OverlayPage>
+        <OverlayPage id={id} path="/theme" width={343} height={431}>
+          <Menu.Card>
+            <ThemeView id={id} />
+          </Menu.Card>
+        </OverlayPage>
+        <OverlayPage id={id} path="/language" width={343} height={431}>
+          <Menu.Card>
+            <LanguageView id={id} />
+          </Menu.Card>
         </OverlayPage>
         <DownloadRoutes id={id} />
         <OverlayPage id={id} path="/watchparty" width={343} height={455}>

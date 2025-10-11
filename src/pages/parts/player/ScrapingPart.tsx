@@ -168,14 +168,6 @@ export function ScrapingPartInterruptButton() {
   return (
     <div className="flex gap-3 pb-3">
       <Button
-        href="/"
-        theme="secondary"
-        padding="md:px-17 p-3"
-        className="mt-6"
-      >
-        {t("notFound.goHome")}
-      </Button>
-      <Button
         onClick={() => window.location.reload()}
         theme="purple"
         padding="md:px-17 p-3"
@@ -196,9 +188,11 @@ export function Tips() {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-type-secondary text-center text-sm text-bold">
-        Tip: {tip}
-      </p>
+      {new URLSearchParams(window.location.search).get("tips") !== "false" && (
+        <p className="text-type-secondary text-center text-sm text-bold">
+          Tip: {tip}
+        </p>
+      )}
     </div>
   );
 }

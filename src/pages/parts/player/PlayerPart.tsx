@@ -5,6 +5,7 @@ import { Player } from "@/components/player";
 import { SkipIntroButton } from "@/components/player/atoms/SkipIntroButton";
 import { UnreleasedEpisodeOverlay } from "@/components/player/atoms/UnreleasedEpisodeOverlay";
 import { WatchPartyStatus } from "@/components/player/atoms/WatchPartyStatus";
+import { Widescreen } from "@/components/player/atoms/Widescreen";
 import { useShouldShowControls } from "@/components/player/hooks/useShouldShowControls";
 import { useSkipTime } from "@/components/player/hooks/useSkipTime";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -33,6 +34,10 @@ export function PlayerPart(props: PlayerPartProps) {
   const { isHost, enabled } = useWatchPartyStore();
 
   const inControl = !enabled || isHost;
+
+  // backUrl prop is required for backwards compatibility with other components
+  // but we're only using backlink from URL parameters for rendering the back link
+  const _ = props.backUrl;
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const isPWA = window.matchMedia("(display-mode: standalone)").matches;
@@ -84,11 +89,15 @@ export function PlayerPart(props: PlayerPartProps) {
       <Player.SubtitleView controlsShown={showTargets} />
 
       {status === playerStatus.PLAYING ? (
-        <Player.CenterControls>
-          <Player.LoadingSpinner />
-          <Player.AutoPlayStart />
-          <Player.CastingNotification />
-        </Player.CenterControls>
+        <>
+          <Player.CenterControls>
+            <Player.LoadingSpinner />
+            <Player.AutoPlayStart />
+          </Player.CenterControls>
+          <Player.CenterControls>
+            <Player.CastingNotification />
+          </Player.CenterControls>
+        </>
       ) : null}
 
       <Player.CenterMobileControls
@@ -114,21 +123,45 @@ export function PlayerPart(props: PlayerPartProps) {
       <Player.TopControls show={showTargets}>
         <div className="grid grid-cols-[1fr,auto] xl:grid-cols-3 items-center">
           <div className="flex space-x-3 items-center">
-            <Player.BackLink url={props.backUrl} />
-            <span className="text mx-3 text-type-secondary">/</span>
+            {(() => {
+              const backlink = new URLSearchParams(window.location.search).get(
+                "backlink",
+              );
+
+              // Only show backlink if it comes from URL parameter, and strip any quotes
+              if (backlink) {
+                // Remove any surrounding quotes from the URL
+                const cleanUrl = backlink.replace(/^["'](.*)["']$/, "$1");
+
+                return (
+                  <>
+                    <Player.BackLink url={cleanUrl} />
+                    <span className="text mx-3 text-type-secondary">/</span>
+                  </>
+                );
+              }
+              return null;
+            })()}
             <Player.Title />
 
-            <Player.InfoButton />
-
-            <Player.BookmarkButton />
+            {new URLSearchParams(window.location.search).get("allinone") ===
+              "true" && <Player.InfoButton />}
           </div>
           <div className="text-center hidden xl:flex justify-center items-center">
             <Player.EpisodeTitle />
           </div>
-          <div className="hidden lg:flex items-center justify-end">
-            <BrandPill />
-          </div>
-          <div className="flex lg:hidden items-center justify-end">
+          {new URLSearchParams(window.location.search).get("logo") !==
+            "false" && (
+            <a
+              href="https://pstream.mov"
+              target="_blank"
+              rel="noreferrer"
+              className="hidden sm:flex items-center justify-end"
+            >
+              <BrandPill />
+            </a>
+          )}
+          <div className="flex sm:hidden items-center justify-end">
             {status === playerStatus.PLAYING ? (
               <>
                 <Player.Airplay />
@@ -165,11 +198,16 @@ export function PlayerPart(props: PlayerPartProps) {
             ) : null}
           </Player.LeftSideControls>
           <div className="flex items-center space-x-3">
-            <Player.Episodes inControl={inControl} />
-            <Player.SkipEpisodeButton
-              inControl={inControl}
-              onChange={props.onMetaChange}
-            />
+            {new URLSearchParams(window.location.search).get("allinone") ===
+              "true" && (
+              <>
+                <Player.Episodes inControl={inControl} />
+                <Player.SkipEpisodeButton
+                  inControl={inControl}
+                  onChange={props.onMetaChange}
+                />
+              </>
+            )}
             {status === playerStatus.PLAYING ? (
               <>
                 <Player.Pip />
@@ -182,10 +220,14 @@ export function PlayerPart(props: PlayerPartProps) {
               <Player.Captions />
             ) : null}
             <Player.Settings />
-            {isShifting || isHoldingFullscreen ? (
-              <Player.Widescreen />
-            ) : (
-              <Player.Fullscreen />
+            {/* Fullscreen on when not shifting */}
+            {!isShifting && <Player.Fullscreen />}
+
+            {/* Expand button visible when shifting */}
+            {isShifting && (
+              <div>
+                <Widescreen />
+              </div>
             )}
           </div>
         </div>
@@ -193,10 +235,13 @@ export function PlayerPart(props: PlayerPartProps) {
           <div />
           <div className="flex justify-center space-x-3">
             {/* Disable PiP for iOS PWA */}
-            {!(isPWA && isIOS) && status === playerStatus.PLAYING && (
+            {new URLSearchParams(window.location.search).get("allinone") ===
+              "true" && <Player.Episodes inControl={inControl} />}
+            {!isPWA && !isIOS && status === playerStatus.PLAYING && (
               <Player.Pip />
             )}
-            <Player.Episodes inControl={inControl} />
+            {new URLSearchParams(window.location.search).get("allinone") ===
+              "true" && <Player.Episodes inControl={inControl} />}
             {status === playerStatus.PLAYING ? (
               <div className="hidden ssm:block">
                 <Player.Captions />
@@ -205,18 +250,16 @@ export function PlayerPart(props: PlayerPartProps) {
             <Player.Settings />
           </div>
           <div>
-            {status === playerStatus.PLAYING && (
+            {isPWA && status === playerStatus.PLAYING ? (
+              <Widescreen />
+            ) : (
               <div
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
                 className="select-none touch-none"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
-                {isHoldingFullscreen ? (
-                  <Player.Widescreen />
-                ) : (
-                  <Player.Fullscreen />
-                )}
+                {isHoldingFullscreen ? <Widescreen /> : <Player.Fullscreen />}
               </div>
             )}
           </div>
@@ -228,11 +271,14 @@ export function PlayerPart(props: PlayerPartProps) {
       <Player.SpeedChangedPopout />
       <UnreleasedEpisodeOverlay />
 
-      <Player.NextEpisodeButton
-        controlsShowing={showTargets}
-        onChange={props.onMetaChange}
-        inControl={inControl}
-      />
+      {new URLSearchParams(window.location.search).get("allinone") ===
+        "true" && (
+        <Player.NextEpisodeButton
+          controlsShowing={showTargets}
+          onChange={props.onMetaChange}
+          inControl={inControl}
+        />
+      )}
 
       <SkipIntroButton
         controlsShowing={showTargets}
