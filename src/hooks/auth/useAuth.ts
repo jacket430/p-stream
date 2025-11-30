@@ -27,9 +27,11 @@ import {
 } from "@/backend/accounts/user";
 import { useAuthData } from "@/hooks/auth/useAuthData";
 import { useBackendUrl } from "@/hooks/auth/useBackendUrl";
+import { conf } from "@/setup/config";
 import { AccountWithToken, useAuthStore } from "@/stores/auth";
 import { BookmarkMediaItem } from "@/stores/bookmarks";
 import { ProgressMediaItem } from "@/stores/progress";
+import { getTurnstileToken } from "@/utils/turnstile";
 
 export interface RegistrationData {
   recaptchaToken?: string;
@@ -67,19 +69,37 @@ export function useAuth() {
       if (!backendUrl) return;
       const keys = await keysFromMnemonic(loginData.mnemonic);
       const publicKeyBase64Url = bytesToBase64Url(keys.publicKey);
+
+      // Get turnstile token if configured
+      let turnstileToken: string | undefined;
+      const turnstileKey = conf().BACKEND_TURNSTILE_KEY;
+      if (turnstileKey) {
+        try {
+          turnstileToken = await getTurnstileToken(turnstileKey);
+        } catch (error) {
+          console.error("Failed to get turnstile token:", error);
+          // Continue without token if turnstile fails
+        }
+      }
+
       const { challenge } = await getLoginChallengeToken(
         backendUrl,
         publicKeyBase64Url,
+        turnstileToken,
       );
       const signature = await signChallenge(keys, challenge);
-      const loginResult = await loginAccount(backendUrl, {
-        challenge: {
-          code: challenge,
-          signature,
+      const loginResult = await loginAccount(
+        backendUrl,
+        {
+          challenge: {
+            code: challenge,
+            signature,
+          },
+          publicKey: publicKeyBase64Url,
+          device: await encryptData(loginData.userData.device, keys.seed),
         },
-        publicKey: publicKeyBase64Url,
-        device: await encryptData(loginData.userData.device, keys.seed),
-      });
+        turnstileToken,
+      );
 
       const user = await getUser(backendUrl, loginResult.token);
       const seedBase64 = bytesToBase64(keys.seed);
